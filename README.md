@@ -20,12 +20,6 @@ This project implements a Point of Interest (POI) recommendation and trajectory 
 - Pandas, NumPy, Scipy
 - NLTK
 
-Install dependencies via pip:
-
-```bash
-pip install torch deepspeed transformers peft dgl pandas numpy scipy nltk
-```
-
 ## Supported Datasets
 
 - `nyc`: Foursquare NYC
@@ -50,7 +44,7 @@ Fine-tune the base LLM on the trajectory data using LoRA.
 python finetune.py --dataset nyc --model_name Qwen/Qwen3-4B
 ```
 
-### 3. Gradient Labeling / Training
+### 3. Gradient Labeling
 
 Run the gradient-based labeling and training process. This script uses DeepSpeed for distributed execution.
 
@@ -64,7 +58,15 @@ For models supporting Flash Attention 2, use:
 python gradient_label_flash.py --dataset nyc --model_name Qwen/Qwen3-4B --mode train
 ```
 
-### 4. Evaluation
+### 4. Training
+
+train model:
+
+```bash
+python training.py --dataset nyc --model_name Qwen/Qwen3-4B
+```
+
+### 5. Evaluation
 
 Test the trained model performance.
 
@@ -83,6 +85,7 @@ python test.py --dataset nyc --model_name Qwen/Qwen3-4B --mode normal
 - `data_pp.py`: Data preprocessing script.
 - `finetune.py`: Script for fine-tuning LLMs using PEFT/LoRA.
 - `gradient_label.py`: Main training loop with gradient-based labeling.
+- `training.py`: Evaluation script.
 - `test.py`: Evaluation script.
 - `database.py`: Dataset and POI graph handling.
 - `small_models.py`: GNN and other small model definitions.

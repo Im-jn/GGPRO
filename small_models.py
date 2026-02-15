@@ -249,34 +249,6 @@ class NodesJudger(nn.Module):
         return tgt_embed, g_embed, concern_score
 
 
-class DummyJudger(nn.Module):
-    def __init__(self, in_feats, hid_feats, layers_num, poi_num, cate_num, boundary_box, dropout=0.0,
-                 gnn_name="gat", edge_names=("u_trans", "o_trans", "near", "same", "recommend")):
-        super(DummyJudger, self).__init__()
-        self.embed_layer = EmbedLayer(poi_num, cate_num, in_feats, boundary_box)
-
-    def forward(self, graph, poi_inputs, traj_inputs, recover=None):
-        same_id_place = torch.nonzero(poi_inputs[0] == traj_inputs[0][-1]).squeeze(-1)
-        g_embed = self.embed_layer(poi_inputs[0], poi_inputs[1], poi_inputs[2], poi_inputs[3])
-        g_embed[same_id_place] = torch.mean(g_embed, dim=0)  # avoid always recommending the last visited POI
-        t_embed = self.embed_layer(traj_inputs[0], traj_inputs[1], traj_inputs[2], traj_inputs[3])
-        t_embed = t_embed.unsqueeze(1)
-        tgt_embed = t_embed[-1]
-        return tgt_embed, g_embed, None
-
-
-class ZeroJudger(nn.Module):
-    def __init__(self, in_feats, hid_feats, layers_num, poi_num, cate_num, dropout=0.0,
-                 gnn_name="gat", edge_names=("u_trans", "o_trans", "near", "same", "recommend")):
-        super(ZeroJudger, self).__init__()
-        self.in_feats = in_feats
-
-    def forward(self, graph, poi_inputs, traj_inputs, recover=None):
-        tgt_embed = torch.zeros(1, self.in_feats)
-        g_embed = torch.zeros(poi_inputs[0].shape[0], self.in_feats)
-        return tgt_embed, g_embed, None
-
-
 class AttentionCritic(nn.Module):
     def __init__(self, input_dim, hidden_dim=256):
         super(AttentionCritic, self).__init__()

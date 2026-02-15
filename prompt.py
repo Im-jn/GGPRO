@@ -17,29 +17,29 @@ def poi_augment(poi_base, user_id, graph, graph_nodes, imp_nodes, traj, time_sta
         hint += "\t({}){};\n".format(i + 1, graph_prompt)
     poi_set = poi_set.union(graph_poi_set)
 
-    # # 2. process history
-    # history += "<History> "
-    # history += "The following data is a trajectory of user {}: \n".format(user_id)
-    # cur_list = poi_base.get_poi_info(traj[-CONFIG.history_visits:])
-    # cur_prompt, cur_poi_set = gen_traj_prompt(user_id, cur_list, time_stamps[-CONFIG.history_visits:])
-    # history += cur_prompt
-    # poi_set = poi_set.union(cur_poi_set)
-
     # 2. process history
     history += "<History> "
-    history += "The following data is the recent check-ins of user {}: \n".format(user_id)
-    cur_list = poi_base.get_poi_info(traj[-CONFIG.recent_visits:])
-    cur_prompt, cur_poi_set = gen_traj_prompt(user_id, cur_list, time_stamps[-CONFIG.recent_visits:])
+    history += "The following data is a trajectory of user {}: \n".format(user_id)
+    cur_list = poi_base.get_poi_info(traj[-CONFIG.history_visits:])
+    cur_prompt, cur_poi_set = gen_traj_prompt(user_id, cur_list, time_stamps[-CONFIG.history_visits:])
     history += cur_prompt
     poi_set = poi_set.union(cur_poi_set)
 
-    history_prompt = ""
-    if CONFIG.history_visits > CONFIG.recent_visits and with_hint and len(graph_poi_set) > 0:
-        history += "\nAnd the historical trajectory before the recent check-ins: \n".format(user_id)
-        cur_list = poi_base.get_poi_info(traj[-CONFIG.history_visits:-CONFIG.recent_visits])
-        history_prompt, history_poi_set = gen_traj_prompt(user_id, cur_list, time_stamps[-CONFIG.history_visits:-CONFIG.recent_visits])
-        history += history_prompt
-        poi_set = poi_set.union(history_poi_set)
+    # # 2'. process history
+    # history += "<History> "
+    # history += "The following data is the recent check-ins of user {}: \n".format(user_id)
+    # cur_list = poi_base.get_poi_info(traj[-CONFIG.recent_visits:])
+    # cur_prompt, cur_poi_set = gen_traj_prompt(user_id, cur_list, time_stamps[-CONFIG.recent_visits:])
+    # history += cur_prompt
+    # poi_set = poi_set.union(cur_poi_set)
+
+    # history_prompt = ""
+    # if CONFIG.history_visits > CONFIG.recent_visits and with_hint and len(graph_poi_set) > 0:
+    #     history += "\nAnd the historical trajectory before the recent check-ins: \n".format(user_id)
+    #     cur_list = poi_base.get_poi_info(traj[-CONFIG.history_visits:-CONFIG.recent_visits])
+    #     history_prompt, history_poi_set = gen_traj_prompt(user_id, cur_list, time_stamps[-CONFIG.history_visits:-CONFIG.recent_visits])
+    #     history += history_prompt
+    #     poi_set = poi_set.union(history_poi_set)
 
     # 3. process question
     question += "<Question> Given the data, at {}, " \
@@ -107,68 +107,6 @@ def has_edge(graph, u, v, etype='same'):
         return True
     except dgl.DGLError:
         return False
-
-
-def gen_edge_prompt(graph, nodes_info, traj_info, imp_edges):
-    graph_prompt_list = []
-    ap_poi = appeared_poi(nodes_info)
-    for (u, v) in imp_edges:
-        u_info = nodes_info.iloc[u]
-        v_info = nodes_info.iloc[v]
-        ap_poi.append(u)
-        ap_poi.append(v)
-
-        prompt = ["", [], []]
-
-        if graph.has_edges_between(u, v, etype='near') and graph.has_edges_between(u, v, etype='same'):  # generate descriptions
-            prompt[0] = f"{auto_poi(u_info, mode='simple')} and {auto_poi(v_info, mode='simple')} are near to each other " \
-                      f"and both are {u_info['category']}s"
-        elif graph.has_edges_between(u, v, etype='near'):  # generate descriptions
-            prompt[0] = f"{auto_poi(u_info, mode='simple')} and {auto_poi(v_info, mode='simple')} are near to each other"
-        elif graph.has_edges_between(u, v, etype='same'):  # generate descriptions
-            prompt[0] = f"{auto_poi(u_info, mode='simple')} and {auto_poi(v_info, mode='simple')} are both {u_info['category']}s"
-
-        if has_edge(graph, u, v, etype='u_trans') or has_edge(graph, u, v, etype='o_trans'):
-            if has_edge(graph, u, v, etype='u_trans') and has_edge(graph, u, v, etype='o_trans'):  # generate descriptions
-                subject = f"this user and most people"
-            elif has_edge(graph, u, v, etype='u_trans'):  # generate descriptions
-                subject = f"this user"
-            elif has_edge(graph, u, v, etype='o_trans'):  # generate descriptions
-                subject = f"most people"
-            else:
-                raise RuntimeError("Impossible branch")
-            action = f"visited {auto_poi(v_info, mode='simple')} after {auto_poi(u_info, mode='simple')}"
-            prompt[1] = [subject, action]
-
-        if has_edge(graph, v, u, etype='u_trans') or has_edge(graph, v, u, etype='o_trans'):
-            if has_edge(graph, v, u, etype='u_trans') and has_edge(graph, v, u, etype='o_trans'):  # generate descriptions
-                subject = f"this user and most people"
-            elif has_edge(graph, v, u, etype='u_trans'):  # generate descriptions
-                subject = f"this user"
-            elif has_edge(graph, v, u, etype='o_trans'):  # generate descriptions
-                subject = f"most people"
-            else:
-                raise RuntimeError("Impossible branch")
-            action = f"visited {auto_poi(u_info, mode='simple')} after {auto_poi(v_info, mode='simple')}"
-            prompt[2] = [subject, action]
-
-        edge_prompt = prompt[0]
-        if len(prompt[1]) > 0:
-            if len(edge_prompt) > 0:
-                edge_prompt += ", "
-            edge_prompt += " ".join(prompt[1])
-        if len(prompt[2]) > 0:
-            if len(prompt[1]) > 0:
-                edge_prompt += ", also " + prompt[2][1]
-            elif len(edge_prompt) > 0:
-                edge_prompt += ", "
-                edge_prompt += " ".join(prompt[2])
-            else:
-                edge_prompt += " ".join(prompt[2])
-        if edge_prompt == "":
-            print("ha?")
-        graph_prompt_list.append(edge_prompt)
-    return graph_prompt_list, set(ap_poi.pois)
 
 
 def gen_graph_prompt(graph, nodes_info, traj_info, imp_nodes):

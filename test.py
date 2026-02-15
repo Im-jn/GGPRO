@@ -17,7 +17,7 @@ import numpy as np
 
 from config import CONFIG, init
 from database import TrajDataset, POIBase
-from small_models import NodesJudger, DummyJudger, ZeroJudger
+from small_models import NodesJudger
 from huggingface_hub import login
 
 # same augmentation with RAG.py, but with special purpose
@@ -111,7 +111,7 @@ def test(tokenizer, llm_model, judger, poi_base, dataset, args):
                                                           traj, time_stamps, next_time,
                                                           last_traj_ptr,
                                                           with_answer_instruction=True,
-                                                          with_hint=not args.mode == "no_hint")
+                                                          with_hint=True)
         try:
             pred_visit = generate_prediction(prompt, tokenizer, llm_model, top_k=10)
         except Exception as e:
@@ -177,10 +177,7 @@ if __name__ == "__main__":
     parser.add_argument("--base", action="store_true", default=False)
     parser.add_argument("--epoch", type=int, default=-1)
     parser.add_argument("--imp_k", type=int, default=10)
-    parser.add_argument("--ab_mode", type=str, default="")
-    parser.add_argument("--ablation", action="store_true", default=False)
     parser.add_argument("--choice", type=str, default="valid", choices=["valid", "test", "train"])
-    parser.add_argument("--new", action="store_true", default=False)
     args = parser.parse_args()
     CONFIG = init(args.dataset)
 
@@ -190,33 +187,17 @@ if __name__ == "__main__":
     valid_dataset = TrajDataset(pp_path=pp_path,
                                 action=args.choice,
                                 shuffle=CONFIG.shuffle)
-
-    if args.mode == "dummy":  # use a dummy judger that always outputs zeros
-        print("using DummyJudger")
-        judger = DummyJudger(CONFIG.gnn_in_feat, CONFIG.gnn_hid_feat, 3, len(poi_base.pois_df), len(poi_base.cate_list), 
-                             poi_base.bbox, dropout=0.25).to("cuda:0")
-    elif args.mode == "random":  # don't load pre-trained weights
-        print("using RandomJudger")
-        judger = NodesJudger(CONFIG.gnn_in_feat, CONFIG.gnn_hid_feat, 3, len(poi_base.pois_df), len(poi_base.cate_list), 
-                             poi_base.bbox, dropout=0.25).to("cuda:0")
-    elif args.mode == "no_hint":  # use a zero judger that always outputs zeros
-        print("using ZeroJudger")
-        judger = ZeroJudger(CONFIG.gnn_in_feat, CONFIG.gnn_hid_feat, 3,
-                             len(poi_base.pois_df), len(poi_base.cate_list), dropout=0.25).to("cuda:0")
+    
+    judger = NodesJudger(CONFIG.gnn_in_feat, CONFIG.gnn_hid_feat, 3, len(poi_base.pois_df), len(poi_base.cate_list), 
+                            poi_base.bbox, dropout=0.25).to("cuda:0")
+    if args.epoch != -1:
+        file_name = f"judger_epoch{args.epoch}.pth"
     else:
-        judger = NodesJudger(CONFIG.gnn_in_feat, CONFIG.gnn_hid_feat, 3, len(poi_base.pois_df), len(poi_base.cate_list), 
-                             poi_base.bbox, dropout=0.25).to("cuda:0")
-        if args.epoch != -1:
-            file_name = f"judger_epoch{args.epoch}.pth"
-        else:
-            # file_name = "judger_best.pth"
-            file_name = f"judger_best_new.pth" if args.new else "judger_best.pth"
-        if args.ablation:
-            state_dict = torch.load(f"./checkpoints/ablation/{args.dataset}/{args.model_name.split('/')[-1]}/{file_name}")
-        else:
-            state_dict = torch.load(f"./checkpoints/{args.dataset}/{args.model_name.split('/')[-1]}/{file_name}")
-        judger.load_state_dict(state_dict, strict=False)
-        judger.eval()
+        # file_name = "judger_best.pth"
+        file_name = f"judger_best.pth"
+    state_dict = torch.load(f"./checkpoints/{args.dataset}/{args.model_name.split('/')[-1]}/{file_name}")
+    judger.load_state_dict(state_dict, strict=False)
+    judger.eval()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model_name, torch_dtype=torch.float16,
                                               local_files_only=False)

@@ -1,0 +1,79 @@
+# GGPRO
+
+This project implements a Point of Interest (POI) recommendation and trajectory prediction system using Large Language Models (LLMs) and Graph Neural Networks (GNNs). It involves fine-tuning LLMs with LoRA and using a gradient-based labeling approach for optimization.
+
+## Features
+
+- **LLM Fine-tuning**: Supports fine-tuning Qwen and Llama 3 models using LoRA and DeepSpeed.
+- **Gradient Labeling**: An iterative process to generate labels and optimize the model using gradient information.
+- **Hybrid Architecture**: Combines LLMs for sequence understanding and GNNs for spatial/graph-based context.
+
+## Requirements
+
+- Python 3.8+
+- PyTorch
+- Transformers
+- PEFT (Parameter-Efficient Fine-Tuning)
+- DGL (Deep Graph Library)
+- Pandas, NumPy, Scipy
+- NLTK
+
+## Usage
+
+### 1. Fine-tuning LLM
+
+Fine-tune the base LLM on the trajectory data using LoRA.
+
+```bash
+python finetune.py --dataset xxx --model_name Qwen/Qwen3-4B
+```
+
+### 2. Gradient Labeling
+
+Run the gradient-based labeling and training process. This script uses DeepSpeed for distributed execution.
+
+```bash
+deepspeed -p XXXX gradient_label.py --dataset xxx --model_name Qwen/Qwen3-4B --mode train
+```
+
+For models supporting Flash Attention 2, use:
+
+```bash
+python gradient_label_flash.py --dataset xxx --model_name Qwen/Qwen3-4B --mode train
+```
+
+### 3. Training
+
+train model:
+
+```bash
+python training.py --dataset xxx --model_name Qwen/Qwen3-4B
+```
+
+### 4. Evaluation
+
+Test the trained model performance.
+
+```bash
+python test.py --dataset xxx --model_name Qwen/Qwen3-4B
+```
+
+## File Structure
+
+- `finetune.py`: Script for fine-tuning LLMs using PEFT/LoRA.
+- `gradient_label.py`: Main training loop with gradient-based labeling.
+- `training.py`: Evaluation script.
+- `test.py`: Evaluation script.
+- `database.py`: Dataset and POI graph handling.
+- `small_models.py`: GNN and other small model definitions.
+- `prompt.py`: Prompt engineering and augmentation logic.
+- `config.py`: Configuration management.
+- `ds_ft_config.json`: DeepSpeed configuration.
+
+## Configuration
+
+You can adjust hyperparameters such as `top_trans`, `history_visits`, `gnn_in_feat`, etc., in `config.py`. Dataset-specific configurations can be loaded if available.
+
+
+
+
